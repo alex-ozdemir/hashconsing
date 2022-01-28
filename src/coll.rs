@@ -121,6 +121,7 @@
 //!
 //! This crate uses a simple hash by default (multiplies the identifier by a large prime).
 
+use lru::LruCache;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher, BuildHasher};
 use std::ops::{Deref, DerefMut};
@@ -538,6 +539,167 @@ where
         let mut set = HConMap::default();
         for (elem, value) in src {
             set.insert(elem, value);
+        }
+        set
+    }
+}
+
+/// An LRU cache of hash-consed things with trivial hashing.
+//#[derive(Clone, Debug, Eq)]
+pub struct HConLru<T, V>
+where
+    T: HashConsed,
+    T::Inner: Hash + Eq,
+{
+    map: LruCache<HConsed<T::Inner>, V, BuildHashU64>,
+}
+
+impl<T, V> PartialEq for HConLru<T, V>
+where
+    T: HashConsed,
+    T::Inner: Eq + Hash,
+    V: Eq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.len() == other.len()
+            && self
+                .iter()
+                .zip(other.iter())
+                .all(|((k_1, v_1), (k_2, v_2))| k_1 == k_2 && v_1 == v_2)
+    }
+}
+impl<T, V> Hash for HConLru<T, V>
+where
+    T: HashConsed,
+    T::Inner: Eq + Hash,
+    V: Hash,
+{
+    fn hash<H>(&self, h: &mut H)
+    where
+        H: Hasher,
+    {
+        for (key, value) in self {
+            key.hash(h);
+            value.hash(h)
+        }
+    }
+}
+
+const LRU_CACHE_SIZE_DFL: usize = 8192;
+impl<T, V> Default for HConLru<T, V>
+where
+    T: HashConsed,
+    T::Inner: Eq + Hash,
+{
+    fn default() -> Self {
+        HConLru {
+            map: LruCache::with_hasher(LRU_CACHE_SIZE_DFL, BuildHashU64 {}),
+        }
+    }
+}
+
+impl<T: HashConsed, V> HConLru<T, V>
+where
+    T::Inner: Hash + Eq,
+{
+    /// An empty map of hashconsed things.
+    #[inline]
+    pub fn new(cap: usize) -> Self {
+        HConLru {
+            map: LruCache::with_hasher(cap, BuildHashU64 {}),
+        }
+    }
+    /// An empty map of hashconsed things with a capacity.
+    #[inline]
+    pub fn with_capacity(cap: usize) -> Self {
+        Self::new(cap)
+    }
+    /// An iterator visiting all elements.
+    #[inline]
+    pub fn iter(&self) -> ::lru::Iter<HConsed<T::Inner>, V> {
+        self.map.iter()
+    }
+    /// An iterator visiting all elements.
+    #[inline]
+    pub fn iter_mut(&mut self) -> ::lru::IterMut<HConsed<T::Inner>, V> {
+        self.map.iter_mut()
+    }
+}
+impl<'a, T, V> IntoIterator for &'a HConLru<T, V>
+where
+    T: HashConsed,
+    T::Inner: Hash + Eq,
+{
+    type Item = (&'a HConsed<T::Inner>, &'a V);
+    type IntoIter = ::lru::Iter<'a, HConsed<T::Inner>, V>;
+    fn into_iter(self) -> Self::IntoIter {
+        (&self.map).into_iter()
+    }
+}
+impl<'a, T, V> IntoIterator for &'a mut HConLru<T, V>
+where
+    T: HashConsed,
+    T::Inner: Hash + Eq,
+{
+    type Item = (&'a HConsed<T::Inner>, &'a mut V);
+    type IntoIter = ::lru::IterMut<'a, HConsed<T::Inner>, V>;
+    fn into_iter(self) -> Self::IntoIter {
+        (&mut self.map).into_iter()
+    }
+}
+/*
+// RSW: LruCache data structure doesn't expose a consuming iterator
+impl<T, V> IntoIterator for HConLru<T, V>
+where
+    T: HashConsed,
+    T::Inner: Hash + Eq,
+{
+    type Item = (HConsed<T::Inner>, V);
+    type IntoIter = ::lru::IntoIter<HConsed<T::Inner>, V>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.map.into_iter()
+    }
+}
+*/
+/*
+// RSW: LruCache data structure doesn't expose FromIterator
+impl<T, V> ::std::iter::FromIterator<(HConsed<T::Inner>, V)> for HConLru<T, V>
+where
+    T: HashConsed,
+    T::Inner: Hash + Eq,
+{
+    fn from_iter<I: IntoIterator<Item = (HConsed<T::Inner>, V)>>(iter: I) -> Self {
+        HConLru::from(iter)
+    }
+}
+*/
+impl<T: HashConsed, V> Deref for HConLru<T, V>
+where
+    T::Inner: Hash + Eq,
+{
+    type Target = LruCache<HConsed<T::Inner>, V, BuildHashU64>;
+    fn deref(&self) -> &Self::Target {
+        &self.map
+    }
+}
+impl<T: HashConsed, V> DerefMut for HConLru<T, V>
+where
+    T::Inner: Hash + Eq,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.map
+    }
+}
+
+impl<T, V, Src> From<Src> for HConLru<HConsed<T>, V>
+where
+    T: Hash + Eq,
+    Src: Iterator<Item = (HConsed<T>, V)>,
+{
+    fn from(src: Src) -> Self {
+        let mut set = HConLru::new(LRU_CACHE_SIZE_DFL);
+        for (elem, value) in src {
+            set.put(elem, value);
         }
         set
     }
