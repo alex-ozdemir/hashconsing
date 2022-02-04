@@ -388,14 +388,10 @@ pub struct WHConsed<T> {
 impl<T> WHConsed<T> {
     /// Turns a weak hashconsed thing in a hashconsed thing.
     pub fn to_hconsed(&self) -> Option<HConsed<T>> {
-        if let Some(arc) = self.elm.upgrade() {
-            Some(HConsed {
+        self.elm.upgrade().map(|arc| HConsed {
                 elm: arc,
                 uid: self.uid,
-            })
-        } else {
-            None
-        }
+        })
     }
 }
 
@@ -592,7 +588,7 @@ impl<'a, T: Hash + Eq + Clone> HashConsign<T> for &'a mut HConsign<T> {
         // If the element is known and upgradable return it.
         if let Some(hconsed) = self.get(&elm) {
             debug_assert!(*hconsed.elm == elm);
-            return (hconsed.clone(), false);
+            return (hconsed, false);
         }
         // Otherwise build hconsed version.
         let hconsed = HConsed {
