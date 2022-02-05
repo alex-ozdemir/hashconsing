@@ -1,5 +1,5 @@
 warning: unused import: `HConsed`
- --> tests/try_build/issue_1.rs:5:19
+ --> $DIR/issue_1.rs:5:19
   |
 5 | use hashconsing::{HConsed, HConsign, HashConsign};
   |                   ^^^^^^^
@@ -7,14 +7,14 @@ warning: unused import: `HConsed`
   = note: `#[warn(unused_imports)]` on by default
 
 error[E0277]: `Cell<RefOrInt<'_>>` cannot be shared between threads safely
-   --> tests/try_build/issue_1.rs:37:11
+   --> $DIR/issue_1.rs:37:11
     |
 37  |         s.spawn(move |_| {
     |           ^^^^^ `Cell<RefOrInt<'_>>` cannot be shared between threads safely
     |
     = help: within `&HashableCell<RefOrInt<'_>>`, the trait `Sync` is not implemented for `Cell<RefOrInt<'_>>`
 note: required because it appears within the type `HashableCell<RefOrInt<'_>>`
-   --> tests/try_build/issue_1.rs:18:8
+   --> $DIR/issue_1.rs:18:8
     |
 18  | struct HashableCell<T: Eq + PartialEq + Copy> {
     |        ^^^^^^^^^^^^
@@ -22,8 +22,8 @@ note: required because it appears within the type `HashableCell<RefOrInt<'_>>`
     = note: required because of the requirements on the impl of `Send` for `Arc<&HashableCell<RefOrInt<'_>>>`
     = note: required because it appears within the type `HConsed<&HashableCell<RefOrInt<'_>>>`
     = note: required because it appears within the type `[closure@$DIR/tests/try_build/issue_1.rs:37:17: 45:10]`
-note: required by a bound in `crossbeam_utils::thread::Scope::<'env>::spawn`
-   --> $CARGO/crossbeam-utils-0.8.6/src/thread.rs
+note: required by a bound in `Scope::<'env>::spawn`
+   --> $DIR/thread.rs:248:12
     |
-    |         F: Send + 'env,
-    |            ^^^^ required by this bound in `crossbeam_utils::thread::Scope::<'env>::spawn`
+248 |         F: Send + 'env,
+    |            ^^^^ required by this bound in `Scope::<'env>::spawn`
