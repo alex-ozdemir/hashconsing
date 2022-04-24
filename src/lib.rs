@@ -226,6 +226,8 @@ pub extern crate lazy_static;
 
 pub use lazy_static::lazy_static;
 
+use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+
 #[cfg(test)]
 mod test;
 
@@ -389,8 +391,8 @@ impl<T> WHConsed<T> {
     /// Turns a weak hashconsed thing in a hashconsed thing.
     pub fn to_hconsed(&self) -> Option<HConsed<T>> {
         self.elm.upgrade().map(|arc| HConsed {
-                elm: arc,
-                uid: self.uid,
+            elm: arc,
+            uid: self.uid,
         })
     }
 }
@@ -702,5 +704,53 @@ impl<'a, T: Hash + Eq + Clone> HashConsign<T> for &'a RwLock<HConsign<T>> {
     }
     fn reserve(self, additional: usize) {
         get!(write on self).reserve(additional)
+    }
+}
+
+/// A trait for hash-consed types with a unique consignment table.
+pub trait UniqueConsign: Sized {
+    /// Create a hash-consed element using the unique consignment table.
+    fn unique_make(self) -> HConsed<Self>;
+}
+
+impl<T: Serialize + UniqueConsign> Serialize for HConsed<T> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_newtype_struct("HConsed", self.get())
+    }
+}
+
+impl<'de, T: Deserialize<'de> + UniqueConsign> Deserialize<'de> for HConsed<T> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct InnerVisit<T>(std::marker::PhantomData<T>);
+
+        impl<T> Default for InnerVisit<T> {
+            fn default() -> Self {
+                Self(Default::default())
+            }
+        }
+
+        impl<'de, T: Deserialize<'de> + UniqueConsign> Visitor<'de> for InnerVisit<T> {
+            type Value = T;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(formatter, "Expected HConsed newtype")
+            }
+            fn visit_newtype_struct<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                T::deserialize(deserializer)
+            }
+        }
+
+        deserializer
+            .deserialize_newtype_struct("HConsed", InnerVisit::<T>::default())
+            .map(UniqueConsign::unique_make)
     }
 }

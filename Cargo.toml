@@ -20,6 +20,7 @@ codecov = { repository = "AdrienChampion/hashconsing", service = "github" }
 [dependencies]
 lazy_static = "1.*"
 lru = "0.7.2"
+serde = "1.0"
 
 [dev-dependencies]
 crossbeam-utils = "^0.8"
