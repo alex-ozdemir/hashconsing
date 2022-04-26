@@ -418,6 +418,15 @@ impl<T> Hash for WHConsed<T> {
     }
 }
 
+impl<T> Clone for WHConsed<T> {
+    fn clone(&self) -> Self {
+        WHConsed {
+            elm: self.elm.clone(),
+            uid: self.uid,
+        }
+    }
+}
+
 impl<T> PartialEq for WHConsed<T> {
     #[inline]
     fn eq(&self, rhs: &Self) -> bool {

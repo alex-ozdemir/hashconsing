@@ -15,10 +15,10 @@ enum ActualTerm {
 
 impl fmt::Display for ActualTerm {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &Self::Var(i) => write!(fmt, "v{}", i),
-            &Self::Lam(ref t) => write!(fmt, "({})", t.get()),
-            &Self::App(ref u, ref v) => write!(fmt, "{}.{}", u.get(), v.get()),
+        match *self {
+            Self::Var(i) => write!(fmt, "v{}", i),
+            Self::Lam(ref t) => write!(fmt, "({})", t.get()),
+            Self::App(ref u, ref v) => write!(fmt, "{}.{}", u.get(), v.get()),
         }
     }
 }
@@ -87,7 +87,7 @@ fn run() {
     let is_new = set.insert(v3.clone());
     assert!(!is_new);
 
-    let (lam2, lam2_name) = (consign.lam(v3.clone()), "lam2");
+    let (lam2, lam2_name) = (consign.lam(v3), "lam2");
     println!("creating {}", lam2);
     assert_eq!(consign.len(), 3);
     assert_eq!(lam.uid(), lam2.uid());
@@ -101,7 +101,7 @@ fn run() {
     assert_eq!(consign.len(), 4);
     let prev = map.insert(app.clone(), app_name);
     assert_eq!(prev, None);
-    let is_new = set.insert(app.clone());
+    let is_new = set.insert(app);
     assert!(is_new);
 
     for term in &set {

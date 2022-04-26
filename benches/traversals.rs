@@ -39,10 +39,10 @@ struct ActualTerm {
 
 impl fmt::Display for ActualTerm {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match &self.op {
-            &Op::Var(i) => write!(fmt, "v{}", i),
-            &Op::Lam => write!(fmt, "({})", self.children[0]),
-            &Op::App => write!(fmt, "{}.{}", self.children[0], self.children[1]),
+        match self.op {
+            Op::Var(i) => write!(fmt, "v{}", i),
+            Op::Lam => write!(fmt, "({})", self.children[0]),
+            Op::App => write!(fmt, "{}.{}", self.children[0], self.children[1]),
         }
     }
 }
@@ -148,7 +148,7 @@ impl std::iter::Iterator for PostOrderIter {
     type Item = Term;
     fn next(&mut self) -> Option<Term> {
         while let Some((children_pushed, t)) = self.stack.last() {
-            if self.visited.contains(&t) {
+            if self.visited.contains(t) {
                 self.stack.pop();
             } else if !children_pushed {
                 self.stack.last_mut().unwrap().0 = true;

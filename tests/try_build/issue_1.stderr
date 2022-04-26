@@ -22,8 +22,8 @@ note: required because it appears within the type `HashableCell<RefOrInt<'_>>`
     = note: required because of the requirements on the impl of `Send` for `Arc<&HashableCell<RefOrInt<'_>>>`
     = note: required because it appears within the type `HConsed<&HashableCell<RefOrInt<'_>>>`
     = note: required because it appears within the type `[closure@$DIR/tests/try_build/issue_1.rs:37:17: 45:10]`
-note: required by a bound in `Scope::<'env>::spawn`
+note: required by a bound in `crossbeam_utils::thread::Scope::<'env>::spawn`
    --> $DIR/thread.rs:248:12
     |
 248 |         F: Send + 'env,
-    |            ^^^^ required by this bound in `Scope::<'env>::spawn`
+    |            ^^^^ required by this bound in `crossbeam_utils::thread::Scope::<'env>::spawn`

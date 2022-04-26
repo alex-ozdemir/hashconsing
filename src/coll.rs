@@ -127,7 +127,7 @@ use std::hash::{Hash, Hasher, BuildHasher};
 use std::ops::{Deref, DerefMut};
 
 use self::hash::BuildHashU64;
-use crate::{HConsed, HashConsed};
+use crate::{HConsed, HashConsed, WHConsed};
 
 /// A hash set of hash-consed things with trivial hashing.
 ///
@@ -698,6 +698,141 @@ where
 {
     fn from(src: Src) -> Self {
         let mut set = HConLru::new(LRU_CACHE_SIZE_DFL);
+        for (elem, value) in src {
+            set.put(elem, value);
+        }
+        set
+    }
+}
+
+/// An LRU cache of weakly hash-consed things with trivial hashing.
+//#[derive(Clone, Debug, Eq)]
+pub struct WHConLru<T, V>
+where
+    T: HashConsed,
+    T::Inner: Hash + Eq,
+{
+    map: LruCache<WHConsed<T::Inner>, V, BuildHashU64>,
+}
+
+impl<T, V> PartialEq for WHConLru<T, V>
+where
+    T: HashConsed,
+    T::Inner: Eq + Hash,
+    V: Eq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.len() == other.len()
+            && self
+                .iter()
+                .zip(other.iter())
+                .all(|((k_1, v_1), (k_2, v_2))| k_1 == k_2 && v_1 == v_2)
+    }
+}
+impl<T, V> Hash for WHConLru<T, V>
+where
+    T: HashConsed,
+    T::Inner: Eq + Hash,
+    V: Hash,
+{
+    fn hash<H>(&self, h: &mut H)
+    where
+        H: Hasher,
+    {
+        for (key, value) in self {
+            key.hash(h);
+            value.hash(h)
+        }
+    }
+}
+
+impl<T, V> Default for WHConLru<T, V>
+where
+    T: HashConsed,
+    T::Inner: Eq + Hash,
+{
+    fn default() -> Self {
+        WHConLru {
+            map: LruCache::with_hasher(LRU_CACHE_SIZE_DFL, BuildHashU64 {}),
+        }
+    }
+}
+
+impl<T: HashConsed, V> WHConLru<T, V>
+where
+    T::Inner: Hash + Eq,
+{
+    /// An empty map of hashconsed things.
+    #[inline]
+    pub fn new(cap: usize) -> Self {
+        WHConLru {
+            map: LruCache::with_hasher(cap, BuildHashU64 {}),
+        }
+    }
+    /// An empty map of hashconsed things with a capacity.
+    #[inline]
+    pub fn with_capacity(cap: usize) -> Self {
+        Self::new(cap)
+    }
+    /// An iterator visiting all elements.
+    #[inline]
+    pub fn iter(&self) -> ::lru::Iter<WHConsed<T::Inner>, V> {
+        self.map.iter()
+    }
+    /// An iterator visiting all elements.
+    #[inline]
+    pub fn iter_mut(&mut self) -> ::lru::IterMut<WHConsed<T::Inner>, V> {
+        self.map.iter_mut()
+    }
+}
+impl<'a, T, V> IntoIterator for &'a WHConLru<T, V>
+where
+    T: HashConsed,
+    T::Inner: Hash + Eq,
+{
+    type Item = (&'a WHConsed<T::Inner>, &'a V);
+    type IntoIter = ::lru::Iter<'a, WHConsed<T::Inner>, V>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.map.iter()
+    }
+}
+impl<'a, T, V> IntoIterator for &'a mut WHConLru<T, V>
+where
+    T: HashConsed,
+    T::Inner: Hash + Eq,
+{
+    type Item = (&'a WHConsed<T::Inner>, &'a mut V);
+    type IntoIter = ::lru::IterMut<'a, WHConsed<T::Inner>, V>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.map.iter_mut()
+    }
+}
+impl<T: HashConsed, V> Deref for WHConLru<T, V>
+where
+    T::Inner: Hash + Eq,
+{
+    type Target = LruCache<WHConsed<T::Inner>, V, BuildHashU64>;
+    fn deref(&self) -> &Self::Target {
+        &self.map
+    }
+}
+impl<T: HashConsed, V> DerefMut for WHConLru<T, V>
+where
+    T::Inner: Hash + Eq,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.map
+    }
+}
+
+impl<T, HT, V, Src> From<Src> for WHConLru<HT, V>
+where
+    HT: HashConsed<Inner = T>,
+    T: Hash + Eq,
+    Src: Iterator<Item = (WHConsed<T>, V)>,
+{
+    fn from(src: Src) -> Self {
+        let mut set = WHConLru::new(LRU_CACHE_SIZE_DFL);
         for (elem, value) in src {
             set.put(elem, value);
         }
